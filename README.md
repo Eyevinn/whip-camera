@@ -28,7 +28,7 @@ sudo make install
 To run you need to set the `GST_PLUGIN_PATH` environment variable to where you have the gstreamer plugins installed, e.g:
 
 ```
-export GST_PLUGIN_PATH=/opt/homebrew/lib/gstreamer-1.0
+export GST_PLUGIN_PATH=/usr/local/lib/gstreamer-1.0
 ```
 
 Then run the command.
