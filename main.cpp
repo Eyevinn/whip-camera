@@ -1,5 +1,6 @@
 #define GST_USE_UNSTABLE_API 1// Removes compile warning
 
+#include "http/WhipClient.h"
 #include "nlohmann/json.hpp"
 #include <csignal>
 #include <cstdint>
@@ -14,9 +15,15 @@
 #include <stdlib.h>
 #include <string.h>
 
+namespace http
+{
+class WhipClient;
+}
+
 GMainLoop* mainLoop = nullptr;
 struct Connection;
 std::map<std::string, GstElement*> elements_;
+
 void padAddedCallback(GstElement* src, GstPad* newPad, Connection* connection);
 void onNegotiationNeededCallback(GstElement* src, Connection* connection);
 void onOfferCreatedCallback(GstPromise* promise, gpointer userData);
@@ -26,10 +33,12 @@ struct Connection
 {
     GstElement* pipeline_;
     GstCaps* rtpVideoFilterCaps_;
+    http::WhipClient& whipClient_;
 
-    Connection()
+    Connection(http::WhipClient& whipClient)
         : pipeline_(nullptr),
-          rtpVideoFilterCaps_(nullptr)
+          rtpVideoFilterCaps_(nullptr),
+          whipClient_(whipClient)
     {
         pipeline_ = gst_pipeline_new("pipeline");
         rtpVideoFilterCaps_ = gst_caps_new_simple("application/x-rtp",
@@ -111,7 +120,8 @@ int32_t main(int32_t argc, char** argv)
     //setenv("GST_DEBUG", "4", 0);
     gst_init(nullptr, nullptr);
 
-    Connection connection;
+    http::WhipClient whipClient("whipEndpointUrl", "whipEndpointAuthKey");
+    Connection connection(whipClient);
 
     {
         struct sigaction sigactionData = {};
@@ -190,4 +200,17 @@ void onNegotiationNeededCallback(GstElement* src, Connection* connection)
 void onOfferCreatedCallback(GstPromise* promise, gpointer userData)
 {
     printf("onOfferCallback\n");
+
+    GstWebRTCSessionDescription* offerDesc;
+    const auto reply = gst_promise_get_reply(promise);
+    gst_structure_get(reply, "offer", GST_TYPE_WEBRTC_SESSION_DESCRIPTION, &offerDesc, nullptr);
+    gst_promise_unref(promise);
+
+    //const auto offerString = std::string(gst_sdp_message_as_text(offerDesc->sdp));
+
+    // auto sendOfferReply = whipClient_.sendOffer(offerString);
+    // if (sendOfferReply.resource_.empty())
+    // {
+    //     return;
+    // }
 }

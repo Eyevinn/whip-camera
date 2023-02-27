@@ -22,6 +22,8 @@ pkg_check_modules(SOUP REQUIRED libsoup-2.4)
 
 set(FILES
         main.cpp
+        http/WhipClient.cpp
+        http/WhipClient.h
 )
 
 add_executable(whip-camera ${FILES})
