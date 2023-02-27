@@ -3,8 +3,6 @@
 
 # Ingest camera to WebRTC-HTTP ingestion protocol
 
-Video player for WebRTC streams using WHPP as SDP exchange protocol
-
 ## Build from source
 
 ### OSX

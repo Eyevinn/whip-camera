@@ -68,7 +68,7 @@ struct Connection
                 "on-negotiation-needed",
                 G_CALLBACK(onNegotiationNeededCallback),
                 this);
-        g_signal_connect(elements_["webrtcbin"], "pad-added", G_CALLBACK(onNegotiationNeededCallback), this);
+        g_signal_connect(elements_["webrtcbin"], "pad-added", G_CALLBACK(padAddedCallback), this);
 
         if (!gst_element_link_filtered(elements_["rtp_video_payload_queue"],
                     elements_["webrtcbin"],
@@ -197,20 +197,23 @@ void onNegotiationNeededCallback(GstElement* src, Connection* connection)
     g_signal_emit_by_name(elements_["webrtcbin"], "create-offer", nullptr, promise);
 }
 
-void onOfferCreatedCallback(GstPromise* promise, gpointer userData)
+void onOfferCreatedCallback(GstPromise* promise, gpointer connection)
 {
     printf("onOfferCallback\n");
 
     GstWebRTCSessionDescription* offerDesc;
+    auto data = reinterpret_cast<Connection*>(connection);
     const auto reply = gst_promise_get_reply(promise);
     gst_structure_get(reply, "offer", GST_TYPE_WEBRTC_SESSION_DESCRIPTION, &offerDesc, nullptr);
     gst_promise_unref(promise);
 
-    //const auto offerString = std::string(gst_sdp_message_as_text(offerDesc->sdp));
+    const auto offerString = std::string(gst_sdp_message_as_text(offerDesc->sdp));
 
-    // auto sendOfferReply = whipClient_.sendOffer(offerString);
-    // if (sendOfferReply.resource_.empty())
-    // {
-    //     return;
-    // }
+    auto sendOfferReply = data->whipClient_.sendOffer(offerString);
+    if (sendOfferReply.resource_.empty())
+    {
+        printf("sendOffer failed\n");
+        return;
+    }
+    printf("sendOffer successful\n");
 }
