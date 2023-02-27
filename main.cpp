@@ -19,19 +19,38 @@ struct Connection;
 std::map<std::string, GstElement*> elements_;
 void padAddedCallback(GstElement* src, GstPad* newPad, Connection* connection);
 void onNegotiationNeededCallback(GstElement* src, Connection* connection);
+void onOfferCreatedCallback(GstPromise* promise, gpointer userData);
 void makeElement(GstElement* pipeline, const char* elementLabel, const char* element);
 
 struct Connection
 {
     GstElement* pipeline_;
+    GstCaps* rtpVideoFilterCaps_;
 
     Connection()
-        : pipeline_(nullptr)
+        : pipeline_(nullptr),
+          rtpVideoFilterCaps_(nullptr)
     {
         pipeline_ = gst_pipeline_new("pipeline");
+        rtpVideoFilterCaps_ = gst_caps_new_simple("application/x-rtp",
+                "media",
+                G_TYPE_STRING,
+                "video",
+                "payload",
+                G_TYPE_INT,
+                96,
+                "encoding-name",
+                G_TYPE_STRING,
+                "VP8",
+                nullptr);
 
         makeElement(pipeline_, "camerasource", "autovideosrc");
         g_signal_connect(elements_["camerasource"], "pad-added", G_CALLBACK(padAddedCallback), this);
+
+        makeElement(pipeline_, "vp8enc", "vp8enc");
+        makeElement(pipeline_, "videoconvert", "videoconvert");
+        makeElement(pipeline_, "rtpvp8pay", "rtpvp8pay");
+        makeElement(pipeline_, "rtp_video_payload_queue", "queue");
 
         makeElement(pipeline_, "webrtcbin", "webrtcbin");
         g_object_set(elements_["webrtcbin"], "name", "send", "stun-server", "stun://stun.l.google.com:19302", nullptr);
@@ -40,9 +59,34 @@ struct Connection
                 "on-negotiation-needed",
                 G_CALLBACK(onNegotiationNeededCallback),
                 this);
+        g_signal_connect(elements_["webrtcbin"], "pad-added", G_CALLBACK(onNegotiationNeededCallback), this);
 
-        makeElement(pipeline_, "vp8enc", "vp8enc");
-        makeElement(pipeline_, "videoconvert", "videoconvert");
+        if (!gst_element_link_filtered(elements_["rtp_video_payload_queue"],
+                    elements_["webrtcbin"],
+                    rtpVideoFilterCaps_))
+        {
+            printf("queue could not be linked to webrtcbin\n");
+            return;
+        }
+        printf("Queue successfully linked to webrtcbin\n");
+
+        if (!gst_element_link_many(elements_["camerasource"],
+                    elements_["videoconvert"],
+                    elements_["vp8enc"],
+                    elements_["rtpvp8pay"],
+                    nullptr))
+        {
+            printf("Source elements could not be linked\n");
+            return;
+        }
+        printf("Successfully linked source elements\n");
+
+        if (!gst_element_link_many(elements_["rtpvp8pay"], elements_["rtp_video_payload_queue"], nullptr))
+        {
+            printf("Final link not possible\n");
+            return;
+        }
+        printf("Final link established\n");
     }
 
     ~Connection()
@@ -64,6 +108,7 @@ int32_t main(int32_t argc, char** argv)
 {
     printf("init\n");
     setenv("GST_PLUGIN_PATH", "/usr/local/lib/gstreamer-1.0", 0);
+    //setenv("GST_DEBUG", "4", 0);
     gst_init(nullptr, nullptr);
 
     Connection connection;
@@ -118,15 +163,31 @@ void makeElement(GstElement* pipeline, const char* elementLabel, const char* ele
 void padAddedCallback(GstElement* src, GstPad* newPad, Connection* connection)
 {
     printf("Received new pad '%s' from '%s'\n", GST_PAD_NAME(newPad), GST_ELEMENT_NAME(src));
-
-    // if (!gst_element_link_many(connection->cameraSourceElement_, connection->webrtcElement_, nullptr))
-    // {
-    //     printf("Failed to link source to sink\n");
-    // }
 }
 
 void onNegotiationNeededCallback(GstElement* src, Connection* connection)
 {
     printf("onNegotiationNeededCallback\n");
-    //do things like create offer
+
+    GArray* transceivers;
+    g_signal_emit_by_name(elements_["webrtcbin"], "get-transceivers", &transceivers);
+
+    for (uint32_t i = 0; i < transceivers->len; ++i)
+    {
+        auto transceiver = g_array_index(transceivers, GstWebRTCRTPTransceiver*, i);
+        if (g_object_class_find_property(G_OBJECT_GET_CLASS(transceiver), "direction") != nullptr)
+        {
+            g_object_set(transceiver, "direction", GST_WEBRTC_RTP_TRANSCEIVER_DIRECTION_SENDONLY, nullptr);
+        }
+        g_object_set(transceiver, "fec-type", GST_WEBRTC_FEC_TYPE_NONE, nullptr);
+        g_object_set(transceiver, "do-nack", TRUE, nullptr);
+    }
+
+    auto promise = gst_promise_new_with_change_func(onOfferCreatedCallback, connection, nullptr);
+    g_signal_emit_by_name(elements_["webrtcbin"], "create-offer", nullptr, promise);
+}
+
+void onOfferCreatedCallback(GstPromise* promise, gpointer userData)
+{
+    printf("onOfferCallback\n");
 }
