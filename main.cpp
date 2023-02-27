@@ -120,7 +120,7 @@ int32_t main(int32_t argc, char** argv)
     //setenv("GST_DEBUG", "4", 0);
     gst_init(nullptr, nullptr);
 
-    http::WhipClient whipClient("whipEndpointUrl", "whipEndpointAuthKey");
+    http::WhipClient whipClient("http://localhost:8200/api/v2/whip/sfu-broadcaster?channelId=test", "");
     Connection connection(whipClient);
 
     {
