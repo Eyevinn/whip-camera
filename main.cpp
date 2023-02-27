@@ -9,40 +9,40 @@
 #include <gst/webrtc/webrtc.h>
 #include <iostream>
 #include <libsoup/soup.h>
+#include <map>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 GMainLoop* mainLoop = nullptr;
 struct Connection;
-void padAdded(GstElement* src, GstPad* newPad, Connection* connection);
+std::map<std::string, GstElement*> elements_;
+void padAddedCallback(GstElement* src, GstPad* newPad, Connection* connection);
 void onNegotiationNeededCallback(GstElement* src, Connection* connection);
 void makeElement(GstElement* pipeline, const char* elementLabel, const char* element);
 
 struct Connection
 {
     GstElement* pipeline_;
-    GstElement* cameraSourceElement_;
-    GstElement* webrtcElement_;
-    GstElement* videoConvertElement_;
-    GstElement* vp8encElement_;
-    GstElement* rtpvp8payElement_;
 
     Connection()
-        : pipeline_(nullptr),
-          cameraSourceElement_(nullptr),
-          webrtcElement_(nullptr),
-          videoConvertElement_(nullptr),
-          vp8encElement_(nullptr),
-          rtpvp8payElement_(nullptr)
+        : pipeline_(nullptr)
     {
         pipeline_ = gst_pipeline_new("pipeline");
 
-        makeElement(pipeline_, "cameraSource", "autovideosrc");
+        makeElement(pipeline_, "camerasource", "autovideosrc");
+        g_signal_connect(elements_["camerasource"], "pad-added", G_CALLBACK(padAddedCallback), this);
+
         makeElement(pipeline_, "webrtcbin", "webrtcbin");
-        makeElement(pipeline_, "videoConvert", "videoconvert");
+        g_object_set(elements_["webrtcbin"], "name", "send", "stun-server", "stun://stun.l.google.com:19302", nullptr);
+        gst_element_sync_state_with_parent(elements_["webrtcbin"]);
+        g_signal_connect(elements_["webrtcbin"],
+                "on-negotiation-needed",
+                G_CALLBACK(onNegotiationNeededCallback),
+                this);
+
         makeElement(pipeline_, "vp8enc", "vp8enc");
-        makeElement(pipeline_, "rtpvp8pay", "rtpvp8pay");
+        makeElement(pipeline_, "videoconvert", "videoconvert");
     }
 
     ~Connection()
@@ -68,12 +68,6 @@ int32_t main(int32_t argc, char** argv)
 
     Connection connection;
 
-    // Signals
-    g_signal_connect(connection.webrtcElement_,
-            "on-negotiation-needed",
-            G_CALLBACK(onNegotiationNeededCallback),
-            &connection);
-
     {
         struct sigaction sigactionData = {};
         sigactionData.sa_handler = intSignalHandler;
@@ -94,7 +88,7 @@ int32_t main(int32_t argc, char** argv)
     mainLoop = g_main_loop_new(nullptr, FALSE);
     g_main_loop_run(mainLoop);
 
-    // Release gst
+    // Release Gstreamer resources
     g_main_loop_unref(mainLoop);
     gst_element_set_state(connection.pipeline_, GST_STATE_NULL);
     gst_deinit();
@@ -104,10 +98,11 @@ int32_t main(int32_t argc, char** argv)
 
 void makeElement(GstElement* pipeline, const char* elementLabel, const char* element)
 {
-    const auto result = gst_element_factory_make(element, elementLabel);
+    const auto& result = gst_element_factory_make(element, elementLabel);
+    elements_.emplace(elementLabel, result);
     if (!result)
     {
-        printf("Failed to make element %s\n", elementLabel);
+        printf("Unable to make gst element %s", element);
         return;
     }
     printf("Made element %s\n", elementLabel);
@@ -120,14 +115,14 @@ void makeElement(GstElement* pipeline, const char* elementLabel, const char* ele
     printf("Added element %s\n", elementLabel);
 }
 
-void padAdded(GstElement* src, GstPad* newPad, Connection* connection)
+void padAddedCallback(GstElement* src, GstPad* newPad, Connection* connection)
 {
     printf("Received new pad '%s' from '%s'\n", GST_PAD_NAME(newPad), GST_ELEMENT_NAME(src));
 
-    if (!gst_element_link_many(connection->cameraSourceElement_, connection->webrtcElement_, nullptr))
-    {
-        printf("Failed to link source to sink\n");
-    }
+    // if (!gst_element_link_many(connection->cameraSourceElement_, connection->webrtcElement_, nullptr))
+    // {
+    //     printf("Failed to link source to sink\n");
+    // }
 }
 
 void onNegotiationNeededCallback(GstElement* src, Connection* connection)

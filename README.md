@@ -31,6 +31,12 @@ To run you need to set the `GST_PLUGIN_PATH` environment variable to where you h
 export GST_PLUGIN_PATH=/usr/local/lib/gstreamer-1.0
 ```
 
+Some OS(like newer macs) have the following path:
+
+```
+export GST_PLUGIN_PATH=/opt/homebrew/lib/gstreamer-1.0
+```
+
 Then run the command.
 ```
 ./whip-camera
