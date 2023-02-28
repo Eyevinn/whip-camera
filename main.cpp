@@ -91,7 +91,7 @@ struct Connection
                 this);
         g_signal_connect(elements_["webrtcbin"], "pad-added", G_CALLBACK(padAddedCallback), this);
 
-        //Link video elements
+        //Link video queue to webrtcbin
         if (!gst_element_link_filtered(elements_["rtp_video_payload_queue"],
                     elements_["webrtcbin"],
                     rtpVideoFilterCaps_))
@@ -110,7 +110,7 @@ struct Connection
             printf("Source elements could not be linked\n");
             return;
         }
-        printf("Successfully linked source elements\n");
+        printf("Successfully linked video source elements\n");
 
         if (!gst_element_link_many(elements_["rtpvp8pay"], elements_["rtp_video_payload_queue"], nullptr))
         {
@@ -120,13 +120,21 @@ struct Connection
         printf("Final video link successful\n");
 
         //Link audio elements
+        if (!gst_element_link_filtered(elements_["rtp_audio_payload_queue"],
+                    elements_["webrtcbin"],
+                    rtpAudioFilterCaps_))
+        {
+            printf("queue could not be linked to webrtcbin\n");
+            return;
+        }
+        printf("Queue successfully linked audio queue to webrtcbin\n");
+
         if (!gst_element_link_many(elements_["audiotestsrc"],
                     elements_["audioconvert"],
                     elements_["audioresample"],
                     elements_["opusenc"],
                     elements_["rtpopuspay"],
                     elements_["rtp_audio_payload_queue"],
-                    elements_["webrtcbin"],
                     nullptr))
         {
             printf("Audio link not possible\n");
@@ -154,6 +162,7 @@ int32_t main(int32_t argc, char** argv)
 {
     printf("init\n");
     setenv("GST_PLUGIN_PATH", "/usr/local/lib/gstreamer-1.0", 0);
+    setenv("GST_DEBUG_DUMP_DOT_DIR", "/Users/olivershin/Development", 0);
     //setenv("GST_DEBUG", "4", 0);
     gst_init(nullptr, nullptr);
 
@@ -278,4 +287,5 @@ void onOfferCreatedCallback(GstPromise* promise, gpointer connection)
 
     printf("Setting remote SDP\n");
     g_signal_emit_by_name(elements_["webrtcbin"], "set-remote-description", answer, nullptr);
+    GST_DEBUG_BIN_TO_DOT_FILE(GST_BIN(data->pipeline_), GST_DEBUG_GRAPH_SHOW_ALL, "pipeline2");
 }
