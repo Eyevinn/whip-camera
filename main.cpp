@@ -33,6 +33,7 @@ struct Connection
 {
     GstElement* pipeline_;
     GstCaps* rtpVideoFilterCaps_;
+    GstCaps* rtpAudioFilterCaps_;
     http::WhipClient& whipClient_;
 
     Connection(http::WhipClient& whipClient)
@@ -52,6 +53,17 @@ struct Connection
                 G_TYPE_STRING,
                 "VP8",
                 nullptr);
+        rtpAudioFilterCaps_ = gst_caps_new_simple("application/x-rtp",
+                "media",
+                G_TYPE_STRING,
+                "audio",
+                "payload",
+                G_TYPE_INT,
+                111,
+                "encoding-name",
+                G_TYPE_STRING,
+                "OPUS",
+                nullptr);
 
         makeElement(pipeline_, "camerasource", "autovideosrc");
         g_signal_connect(elements_["camerasource"], "pad-added", G_CALLBACK(padAddedCallback), this);
@@ -60,6 +72,13 @@ struct Connection
         makeElement(pipeline_, "videoconvert", "videoconvert");
         makeElement(pipeline_, "rtpvp8pay", "rtpvp8pay");
         makeElement(pipeline_, "rtp_video_payload_queue", "queue");
+
+        makeElement(pipeline_, "audiotestsrc", "audiotestsrc");
+        makeElement(pipeline_, "audioconvert", "audioconvert");
+        makeElement(pipeline_, "audioresample", "audioresample");
+        makeElement(pipeline_, "opusenc", "opusenc");
+        makeElement(pipeline_, "rtpopuspay", "rtpopuspay");
+        makeElement(pipeline_, "rtp_audio_payload_queue", "queue");
 
         makeElement(pipeline_, "webrtcbin", "webrtcbin");
         g_object_set(elements_["webrtcbin"], "name", "send", "stun-server", "stun://stun.l.google.com:19302", nullptr);
@@ -70,6 +89,7 @@ struct Connection
                 this);
         g_signal_connect(elements_["webrtcbin"], "pad-added", G_CALLBACK(padAddedCallback), this);
 
+        //Link video elements
         if (!gst_element_link_filtered(elements_["rtp_video_payload_queue"],
                     elements_["webrtcbin"],
                     rtpVideoFilterCaps_))
@@ -95,7 +115,22 @@ struct Connection
             printf("Final link not possible\n");
             return;
         }
-        printf("Final link established\n");
+        printf("Final video link successful\n");
+
+        //Link audio elements
+        if (!gst_element_link_many(elements_["audiotestsrc"],
+                    elements_["audioconvert"],
+                    elements_["audioresample"],
+                    elements_["opusenc"],
+                    elements_["rtpopuspay"],
+                    elements_["rtp_audio_payload_queue"],
+                    elements_["webrtcbin"],
+                    nullptr))
+        {
+            printf("Audio link not possible\n");
+            return;
+        }
+        printf("Audio link successful\n");
     }
 
     ~Connection()
