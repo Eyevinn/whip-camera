@@ -23,6 +23,8 @@ class WhipClient;
 GMainLoop* mainLoop = nullptr;
 struct Connection;
 std::map<std::string, GstElement*> elements_;
+std::string whipResource_;
+std::string etag_;
 
 void padAddedCallback(GstElement* src, GstPad* newPad, Connection* connection);
 void onNegotiationNeededCallback(GstElement* src, Connection* connection);
@@ -251,4 +253,29 @@ void onOfferCreatedCallback(GstPromise* promise, gpointer connection)
         return;
     }
     printf("sendOffer successful\n");
+    whipResource_ = std::move(sendOfferReply.resource_);
+    etag_ = std::move((sendOfferReply.etag_));
+
+    printf("Server responded with resource %s, etag %s\n", whipResource_.c_str(), etag_.c_str());
+    printf("Setting local SDP\n");
+    g_signal_emit_by_name(elements_["webrtcbin"], "set-local-description", offerDesc, nullptr);
+
+    GstSDPMessage* answerMessage = nullptr;
+
+    if (gst_sdp_message_new_from_text(sendOfferReply.sdpAnswer_.c_str(), &answerMessage) != GST_SDP_OK)
+    {
+        printf("Unable to create SDP object from answer\n");
+        return;
+    }
+    printf("Created SDP object from answer\n");
+
+    GstWebRTCSessionDescription* answer(gst_webrtc_session_description_new(GST_WEBRTC_SDP_TYPE_ANSWER, answerMessage));
+    if (!answer)
+    {
+        printf("Unable to create SDP object from answer\n");
+        return;
+    }
+
+    printf("Setting remote SDP\n");
+    g_signal_emit_by_name(elements_["webrtcbin"], "set-remote-description", answer, nullptr);
 }
