@@ -2,7 +2,7 @@
 [![Slack](http://slack.streamingtech.se/badge.svg)](http://slack.streamingtech.se)
 
 # Ingest camera to WebRTC-HTTP ingestion protocol
-Web camera ingestion client for WHIP (https://github.com/Eyevinn/whip). Ingests an web camera stream and sends it to a WHIP endpoint.
+Web camera ingestion client for WHIP (https://github.com/Eyevinn/whip). Ingests a web camera stream and sends it to a WHIP endpoint.
 
 ## Build from source
 
