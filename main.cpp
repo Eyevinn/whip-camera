@@ -26,7 +26,6 @@ std::map<std::string, GstElement*> elements_;
 std::string whipResource_;
 std::string etag_;
 
-void padAddedCallback(GstElement* src, GstPad* newPad, Connection* connection);
 void onNegotiationNeededCallback(GstElement* src, Connection* connection);
 void onOfferCreatedCallback(GstPromise* promise, gpointer userData);
 void makeElement(GstElement* pipeline, const char* elementLabel, const char* element);
@@ -37,11 +36,14 @@ struct Connection
     GstCaps* rtpVideoFilterCaps_;
     GstCaps* rtpAudioFilterCaps_;
     http::WhipClient& whipClient_;
+    std::string jitterBufferLatency_;
 
-    Connection(http::WhipClient& whipClient)
+    Connection(http::WhipClient& whipClient, std::string buffer)
         : pipeline_(nullptr),
           rtpVideoFilterCaps_(nullptr),
-          whipClient_(whipClient)
+          rtpAudioFilterCaps_(nullptr),
+          whipClient_(whipClient),
+          jitterBufferLatency_(buffer)
     {
         pipeline_ = gst_pipeline_new("pipeline");
         rtpVideoFilterCaps_ = gst_caps_new_simple("application/x-rtp",
@@ -68,7 +70,6 @@ struct Connection
                 nullptr);
 
         makeElement(pipeline_, "camerasource", "autovideosrc");
-        g_signal_connect(elements_["camerasource"], "pad-added", G_CALLBACK(padAddedCallback), this);
 
         makeElement(pipeline_, "vp8enc", "vp8enc");
         makeElement(pipeline_, "videoconvert", "videoconvert");
@@ -83,23 +84,28 @@ struct Connection
         makeElement(pipeline_, "rtp_audio_payload_queue", "queue");
 
         makeElement(pipeline_, "webrtcbin", "webrtcbin");
-        g_object_set(elements_["webrtcbin"], "name", "send", "stun-server", "stun://stun.l.google.com:19302", nullptr);
+        g_object_set(elements_["webrtcbin"],
+                "name",
+                "send",
+                "stun-server",
+                "stun://stun.l.google.com:19302",
+                "latency",
+                jitterBufferLatency_.c_str(),
+                nullptr);
         gst_element_sync_state_with_parent(elements_["webrtcbin"]);
         g_signal_connect(elements_["webrtcbin"],
                 "on-negotiation-needed",
                 G_CALLBACK(onNegotiationNeededCallback),
                 this);
-        g_signal_connect(elements_["webrtcbin"], "pad-added", G_CALLBACK(padAddedCallback), this);
 
         //Link video queue to webrtcbin
         if (!gst_element_link_filtered(elements_["rtp_video_payload_queue"],
                     elements_["webrtcbin"],
                     rtpVideoFilterCaps_))
         {
-            printf("queue could not be linked to webrtcbin\n");
+            printf("rtp_video_payload_queue-webrtcbin could not be linked\n");
             return;
         }
-        printf("Queue successfully linked to webrtcbin\n");
 
         if (!gst_element_link_many(elements_["camerasource"],
                     elements_["videoconvert"],
@@ -107,27 +113,24 @@ struct Connection
                     elements_["rtpvp8pay"],
                     nullptr))
         {
-            printf("Source elements could not be linked\n");
+            printf("camerasource-videoconvert-vp8enc-rtpvp8pay could not be linked\n");
             return;
         }
-        printf("Successfully linked video source elements\n");
 
         if (!gst_element_link_many(elements_["rtpvp8pay"], elements_["rtp_video_payload_queue"], nullptr))
         {
-            printf("Final link not possible\n");
+            printf("rtpvp8pay-rtp_video_payload_queue could not be linked\n");
             return;
         }
-        printf("Final video link successful\n");
 
         //Link audio elements
         if (!gst_element_link_filtered(elements_["rtp_audio_payload_queue"],
                     elements_["webrtcbin"],
                     rtpAudioFilterCaps_))
         {
-            printf("queue could not be linked to webrtcbin\n");
+            printf("rtp_audio_payload_queue-webrtcbin could not be linked\n");
             return;
         }
-        printf("Queue successfully linked audio queue to webrtcbin\n");
 
         if (!gst_element_link_many(elements_["audiotestsrc"],
                     elements_["audioconvert"],
@@ -137,10 +140,10 @@ struct Connection
                     elements_["rtp_audio_payload_queue"],
                     nullptr))
         {
-            printf("Audio link not possible\n");
+            printf("audiotestsrc-audioconvert-audioresample-opusenc-rtpopuspay-rtp_audio_payload_queue could not be "
+                   "linked\n");
             return;
         }
-        printf("Audio link successful\n");
     }
 
     ~Connection()
@@ -161,13 +164,25 @@ void intSignalHandler(int32_t)
 int32_t main(int32_t argc, char** argv)
 {
     printf("init\n");
-    setenv("GST_PLUGIN_PATH", "/usr/local/lib/gstreamer-1.0", 0);
-    setenv("GST_DEBUG_DUMP_DOT_DIR", "/Users/olivershin/Development", 0);
-    //setenv("GST_DEBUG", "4", 0);
+
+    const char* whipUrl = std::getenv("WHIP_URL");
+    if (whipUrl == nullptr)
+    {
+        printf("WHIP_URL variable not provided\n");
+        printf("Usage: WHIP_URL=http://localhost:8200/api/v2/whip/sfu-broadcaster?channelId=test "
+               "GST_PLUGIN_PATH=my/plugin/path/gstreamer-1.0 ./whip-camera\n");
+        return 1;
+    }
+    const char* buffer = std::getenv("BUFFER");
+    if (buffer == nullptr)
+    {
+        buffer = "0";
+    }
+
     gst_init(nullptr, nullptr);
 
-    http::WhipClient whipClient("http://localhost:8200/api/v2/whip/sfu-broadcaster?channelId=test", "");
-    Connection connection(whipClient);
+    http::WhipClient whipClient(whipUrl, "");
+    Connection connection(whipClient, std::string(buffer));
 
     {
         struct sigaction sigactionData = {};
@@ -206,19 +221,12 @@ void makeElement(GstElement* pipeline, const char* elementLabel, const char* ele
         printf("Unable to make gst element %s", element);
         return;
     }
-    printf("Made element %s\n", elementLabel);
 
     if (!gst_bin_add(GST_BIN(pipeline), result))
     {
         printf("Failed to add element %s\n", elementLabel);
         return;
     }
-    printf("Added element %s\n", elementLabel);
-}
-
-void padAddedCallback(GstElement* src, GstPad* newPad, Connection* connection)
-{
-    printf("Received new pad '%s' from '%s'\n", GST_PAD_NAME(newPad), GST_ELEMENT_NAME(src));
 }
 
 void onNegotiationNeededCallback(GstElement* src, Connection* connection)
@@ -258,10 +266,10 @@ void onOfferCreatedCallback(GstPromise* promise, gpointer connection)
     auto sendOfferReply = data->whipClient_.sendOffer(offerString);
     if (sendOfferReply.resource_.empty())
     {
-        printf("sendOffer failed\n");
+        printf("whipClient sendOffer failed\n");
         return;
     }
-    printf("sendOffer successful\n");
+
     whipResource_ = std::move(sendOfferReply.resource_);
     etag_ = std::move((sendOfferReply.etag_));
 
@@ -287,5 +295,4 @@ void onOfferCreatedCallback(GstPromise* promise, gpointer connection)
 
     printf("Setting remote SDP\n");
     g_signal_emit_by_name(elements_["webrtcbin"], "set-remote-description", answer, nullptr);
-    GST_DEBUG_BIN_TO_DOT_FILE(GST_BIN(data->pipeline_), GST_DEBUG_GRAPH_SHOW_ALL, "pipeline2");
 }
