@@ -2,6 +2,7 @@
 [![Slack](http://slack.streamingtech.se/badge.svg)](http://slack.streamingtech.se)
 
 # Ingest camera to WebRTC-HTTP ingestion protocol
+Web camera ingestion client for WHIP (https://github.com/Eyevinn/whip). Ingests an web camera stream and sends it to a WHIP endpoint.
 
 ## Build from source
 
@@ -12,7 +13,7 @@ Requirements:
 - Install additional dependencies using homebrew
 
 ```
-brew install gstreamer gst-plugins-bad libsoup@2 icu4c cmake gst-libav
+brew install gstreamer gst-plugins-bad gst-plugins-good libsoup@2 icu4c cmake gst-libav
 ```
 
 ```
@@ -40,20 +41,9 @@ Then run the command.
 ./whip-camera
 ```
 
-## Debug
-
-Run with the following environment variables set:
-
+example.
 ```
-GST_DEBUG_DUMP_DOT_DIR=<target-dir> \
-GST_DEBUG=4 \
-GST_PLUGIN_PATH=/opt/homebrew/lib/gstreamer-1.0 \
-./whip-camera
-```
-
-Generate png from .dot
-```
-dot -Tpng input.dot > output.png
+WHIP_URL=http://myWhipURL BUFFER=5000 GST_PLUGIN_PATH=/usr/local/lib/gstreamer-1.0 ./whip-camera
 ```
 
 ## License (Apache-2.0)
