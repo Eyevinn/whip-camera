@@ -99,7 +99,6 @@ struct Connection
             G_CALLBACK(onNegotiationNeededCallback),
             this);
 
-        // Link video queue to webrtcbin
         if (!gst_element_link_filtered(elements_["rtp_video_payload_queue"],
                 elements_["webrtcbin"],
                 rtpVideoFilterCaps_))
@@ -124,7 +123,6 @@ struct Connection
             return;
         }
 
-        // Link audio elements
         if (!gst_element_link_filtered(elements_["rtp_audio_payload_queue"],
                 elements_["webrtcbin"],
                 rtpAudioFilterCaps_))
