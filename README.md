@@ -19,7 +19,6 @@ brew install gstreamer gst-plugins-bad gst-plugins-good libsoup@2 icu4c cmake gs
 ```
 cmake -DCMAKE_BUILD_TYPE=Release -G "Unix Makefiles" .
 make
-sudo make install
 ```
 
 ## Run
@@ -43,7 +42,7 @@ Then run the command.
 
 example.
 ```
-WHIP_URL=http://myWhipURL BUFFER=5000 GST_PLUGIN_PATH=/usr/local/lib/gstreamer-1.0 ./whip-camera
+GST_PLUGIN_PATH=/usr/local/lib/gstreamer-1.0 ./whip-camera -b 5000 -u "http://myWhipURL" 
 ```
 
 ## License (Apache-2.0)

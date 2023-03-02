@@ -4,6 +4,7 @@
 #include "nlohmann/json.hpp"
 #include <csignal>
 #include <cstdint>
+#include <getopt.h>
 #include <glib.h>
 #include <gst/gst.h>
 #include <gst/sdp/sdp.h>
@@ -165,7 +166,23 @@ int32_t main(int32_t argc, char** argv)
 {
     printf("init\n");
 
-    const char* whipUrl = std::getenv("WHIP_URL");
+    const char* buffer = nullptr;
+    const char* whipUrl = nullptr;
+    int32_t getOptResult;
+
+    while ((getOptResult = getopt(argc, argv, ":b:u:")) != -1)
+        switch (getOptResult)
+        {
+            case 'b':
+                buffer = optarg;
+                break;
+            case 'u':
+                whipUrl = optarg;
+                break;
+            default:
+                break;
+        }
+
     if (whipUrl == nullptr)
     {
         printf("WHIP_URL variable not provided\n");
@@ -173,7 +190,7 @@ int32_t main(int32_t argc, char** argv)
                "GST_PLUGIN_PATH=my/plugin/path/gstreamer-1.0 ./whip-camera\n");
         return 1;
     }
-    const char* buffer = std::getenv("BUFFER");
+
     if (buffer == nullptr)
     {
         buffer = "0";
