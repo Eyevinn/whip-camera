@@ -9,3 +9,4 @@ CMakeFiles
 .cmake
 build/
 .DS_Store
+install_manifest.txt
