@@ -207,7 +207,6 @@ int32_t main(int32_t argc, char** argv)
         sigaction(SIGINT, &sigactionData, nullptr);
     }
 
-    // Start playing
     printf("Start playing...\n");
     if (gst_element_set_state(connection.pipeline_, GST_STATE_PLAYING) == GST_STATE_CHANGE_FAILURE)
     {
@@ -219,7 +218,6 @@ int32_t main(int32_t argc, char** argv)
     mainLoop = g_main_loop_new(nullptr, FALSE);
     g_main_loop_run(mainLoop);
 
-    // Release Gstreamer resources
     g_main_loop_unref(mainLoop);
     gst_element_set_state(connection.pipeline_, GST_STATE_NULL);
     gst_deinit();
