@@ -1,4 +1,4 @@
-#define GST_USE_UNSTABLE_API 1// Removes compile warning
+#define GST_USE_UNSTABLE_API 1 // Removes compile warning
 
 #include "http/WhipClient.h"
 #include "nlohmann/json.hpp"
@@ -48,27 +48,27 @@ struct Connection
     {
         pipeline_ = gst_pipeline_new("pipeline");
         rtpVideoFilterCaps_ = gst_caps_new_simple("application/x-rtp",
-                "media",
-                G_TYPE_STRING,
-                "video",
-                "payload",
-                G_TYPE_INT,
-                96,
-                "encoding-name",
-                G_TYPE_STRING,
-                "VP8",
-                nullptr);
+            "media",
+            G_TYPE_STRING,
+            "video",
+            "payload",
+            G_TYPE_INT,
+            96,
+            "encoding-name",
+            G_TYPE_STRING,
+            "VP8",
+            nullptr);
         rtpAudioFilterCaps_ = gst_caps_new_simple("application/x-rtp",
-                "media",
-                G_TYPE_STRING,
-                "audio",
-                "payload",
-                G_TYPE_INT,
-                111,
-                "encoding-name",
-                G_TYPE_STRING,
-                "OPUS",
-                nullptr);
+            "media",
+            G_TYPE_STRING,
+            "audio",
+            "payload",
+            G_TYPE_INT,
+            111,
+            "encoding-name",
+            G_TYPE_STRING,
+            "OPUS",
+            nullptr);
 
         makeElement(pipeline_, "camerasource", "autovideosrc");
 
@@ -86,33 +86,33 @@ struct Connection
 
         makeElement(pipeline_, "webrtcbin", "webrtcbin");
         g_object_set(elements_["webrtcbin"],
-                "name",
-                "send",
-                "stun-server",
-                "stun://stun.l.google.com:19302",
-                "latency",
-                jitterBufferLatency_.c_str(),
-                nullptr);
+            "name",
+            "send",
+            "stun-server",
+            "stun://stun.l.google.com:19302",
+            "latency",
+            jitterBufferLatency_.c_str(),
+            nullptr);
         gst_element_sync_state_with_parent(elements_["webrtcbin"]);
         g_signal_connect(elements_["webrtcbin"],
-                "on-negotiation-needed",
-                G_CALLBACK(onNegotiationNeededCallback),
-                this);
+            "on-negotiation-needed",
+            G_CALLBACK(onNegotiationNeededCallback),
+            this);
 
-        //Link video queue to webrtcbin
+        // Link video queue to webrtcbin
         if (!gst_element_link_filtered(elements_["rtp_video_payload_queue"],
-                    elements_["webrtcbin"],
-                    rtpVideoFilterCaps_))
+                elements_["webrtcbin"],
+                rtpVideoFilterCaps_))
         {
             printf("rtp_video_payload_queue-webrtcbin could not be linked\n");
             return;
         }
 
         if (!gst_element_link_many(elements_["camerasource"],
-                    elements_["videoconvert"],
-                    elements_["vp8enc"],
-                    elements_["rtpvp8pay"],
-                    nullptr))
+                elements_["videoconvert"],
+                elements_["vp8enc"],
+                elements_["rtpvp8pay"],
+                nullptr))
         {
             printf("camerasource-videoconvert-vp8enc-rtpvp8pay could not be linked\n");
             return;
@@ -124,22 +124,22 @@ struct Connection
             return;
         }
 
-        //Link audio elements
+        // Link audio elements
         if (!gst_element_link_filtered(elements_["rtp_audio_payload_queue"],
-                    elements_["webrtcbin"],
-                    rtpAudioFilterCaps_))
+                elements_["webrtcbin"],
+                rtpAudioFilterCaps_))
         {
             printf("rtp_audio_payload_queue-webrtcbin could not be linked\n");
             return;
         }
 
         if (!gst_element_link_many(elements_["audiotestsrc"],
-                    elements_["audioconvert"],
-                    elements_["audioresample"],
-                    elements_["opusenc"],
-                    elements_["rtpopuspay"],
-                    elements_["rtp_audio_payload_queue"],
-                    nullptr))
+                elements_["audioconvert"],
+                elements_["audioresample"],
+                elements_["opusenc"],
+                elements_["rtpopuspay"],
+                elements_["rtp_audio_payload_queue"],
+                nullptr))
         {
             printf("audiotestsrc-audioconvert-audioresample-opusenc-rtpopuspay-rtp_audio_payload_queue could not be "
                    "linked\n");
@@ -173,14 +173,14 @@ int32_t main(int32_t argc, char** argv)
     while ((getOptResult = getopt(argc, argv, ":b:u:")) != -1)
         switch (getOptResult)
         {
-            case 'b':
-                buffer = optarg;
-                break;
-            case 'u':
-                whipUrl = optarg;
-                break;
-            default:
-                break;
+        case 'b':
+            buffer = optarg;
+            break;
+        case 'u':
+            whipUrl = optarg;
+            break;
+        default:
+            break;
         }
 
     if (whipUrl == nullptr)
