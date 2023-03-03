@@ -312,7 +312,7 @@ void onOfferCreatedCallback(GstPromise* promise, gpointer connection)
     g_signal_emit_by_name(elements_["webrtcbin"], "set-remote-description", answer, nullptr);
 }
 
-GstDeviceMonitor* setupRawVideoSourceDeviceMonitor(void)
+GstDeviceMonitor* setupRawVideoSourceDeviceMonitor()
 {
     GstDeviceMonitor* monitor;
     GstCaps* caps;
