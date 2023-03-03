@@ -40,9 +40,19 @@ Then run the command.
 ./whip-camera
 ```
 
-example.
+Flags:
+- -b set duration to buffer in the jitterbuffers (in ms)
+- -u url address for WHIP endpoint
+- -l list video source devices with video/x-raw capabilities
+
+run example
 ```
 GST_PLUGIN_PATH=/usr/local/lib/gstreamer-1.0 ./whip-camera -b 5000 -u "http://myWhipURL" 
+```
+
+list video sources example
+```
+GST_PLUGIN_PATH=/usr/local/lib/gstreamer-1.0 ./whip-camera -l 
 ```
 
 ## License (Apache-2.0)
