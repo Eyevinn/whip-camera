@@ -30,6 +30,7 @@ std::string etag_;
 void onNegotiationNeededCallback(GstElement* src, Connection* connection);
 void onOfferCreatedCallback(GstPromise* promise, gpointer userData);
 void makeElement(GstElement* pipeline, const char* elementLabel, const char* element);
+GstDeviceMonitor* setupRawVideoSourceDeviceMonitor(void);
 
 struct Connection
 {
@@ -163,18 +164,21 @@ void intSignalHandler(int32_t)
 
 int32_t main(int32_t argc, char** argv)
 {
-    printf("init\n");
+    gst_init(nullptr, nullptr);
 
     const char* buffer = nullptr;
     const char* whipUrl = nullptr;
     int32_t getOptResult;
 
-    while ((getOptResult = getopt(argc, argv, ":b:u:")) != -1)
+    while ((getOptResult = getopt(argc, argv, ":b:lu:")) != -1)
         switch (getOptResult)
         {
         case 'b':
             buffer = optarg;
             break;
+        case 'l':
+            setupRawVideoSourceDeviceMonitor();
+            return 0;
         case 'u':
             whipUrl = optarg;
             break;
@@ -194,8 +198,6 @@ int32_t main(int32_t argc, char** argv)
     {
         buffer = "0";
     }
-
-    gst_init(nullptr, nullptr);
 
     http::WhipClient whipClient(whipUrl, "");
     Connection connection(whipClient, std::string(buffer));
@@ -222,7 +224,6 @@ int32_t main(int32_t argc, char** argv)
     g_main_loop_unref(mainLoop);
     gst_element_set_state(connection.pipeline_, GST_STATE_NULL);
     gst_deinit();
-    printf("deinit\n");
     return 0;
 }
 
@@ -309,4 +310,33 @@ void onOfferCreatedCallback(GstPromise* promise, gpointer connection)
 
     printf("Setting remote SDP\n");
     g_signal_emit_by_name(elements_["webrtcbin"], "set-remote-description", answer, nullptr);
+}
+
+GstDeviceMonitor* setupRawVideoSourceDeviceMonitor(void)
+{
+    GstDeviceMonitor* monitor;
+    GstCaps* caps;
+
+    monitor = gst_device_monitor_new();
+
+    caps = gst_caps_new_empty_simple("video/x-raw");
+    gst_device_monitor_add_filter(monitor, "Video/Source", caps);
+    gst_caps_unref(caps);
+
+    auto devices = gst_device_monitor_get_devices(monitor);
+    if (devices != nullptr)
+    {
+        while (devices != nullptr)
+        {
+            auto device = reinterpret_cast<GstDevice*>(devices->data);
+            printf("%s\n", gst_device_get_display_name(device));
+
+            gst_object_unref(device);
+            devices = g_list_delete_link(devices, devices);
+        }
+    }
+
+    gst_device_monitor_start(monitor);
+
+    return monitor;
 }
