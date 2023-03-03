@@ -164,7 +164,6 @@ void intSignalHandler(int32_t)
 
 int32_t main(int32_t argc, char** argv)
 {
-    printf("init\n");
     gst_init(nullptr, nullptr);
 
     const char* buffer = nullptr;
@@ -225,7 +224,6 @@ int32_t main(int32_t argc, char** argv)
     g_main_loop_unref(mainLoop);
     gst_element_set_state(connection.pipeline_, GST_STATE_NULL);
     gst_deinit();
-    printf("deinit\n");
     return 0;
 }
 
