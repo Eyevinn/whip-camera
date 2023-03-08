@@ -64,8 +64,8 @@ int32_t main(int32_t argc, char** argv)
     if (whipUrl == nullptr)
     {
         printf("WHIP_URL variable not provided\n");
-        printf("Usage: WHIP_URL=http://localhost:8200/api/v2/whip/sfu-broadcaster?channelId=test "
-               "GST_PLUGIN_PATH=my/plugin/path/gstreamer-1.0 ./whip-camera\n");
+        printf("Usage: GST_PLUGIN_PATH=/usr/local/lib/gstreamer-1.0 ./whip-camera -b 50 -u "
+               "'http://localhost:8200/api/v2/whip/sfu-broadcaster?channelId=test'\n");
         return 1;
     }
 
