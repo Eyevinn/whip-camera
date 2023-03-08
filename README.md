@@ -47,7 +47,7 @@ Flags:
 
 run example
 ```
-GST_PLUGIN_PATH=/usr/local/lib/gstreamer-1.0 ./whip-camera -b 5000 -u "http://myWhipURL" 
+GST_PLUGIN_PATH=/usr/local/lib/gstreamer-1.0 ./whip-camera -b 50 -u "http://myWhipURL" 
 ```
 
 list video sources example
