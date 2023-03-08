@@ -3,159 +3,35 @@
 #include "http/WhipClient.h"
 #include "nlohmann/json.hpp"
 #include <csignal>
-#include <cstdint>
 #include <getopt.h>
 #include <glib.h>
 #include <gst/gst.h>
 #include <gst/sdp/sdp.h>
 #include <gst/webrtc/webrtc.h>
-#include <iostream>
-#include <libsoup/soup.h>
 #include <map>
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
-namespace http
+namespace
 {
-class WhipClient;
-}
-
 GMainLoop* mainLoop = nullptr;
-struct Connection;
+
 std::map<std::string, GstElement*> elements_;
+
 std::string whipResource_;
 std::string etag_;
+std::string jitterBufferLatency_;
 
-void onNegotiationNeededCallback(GstElement* src, Connection* connection);
-void onOfferCreatedCallback(GstPromise* promise, gpointer userData);
+GstElement* pipeline_ = nullptr;
+
+GstCaps* rtpVideoFilterCaps_ = nullptr;
+GstCaps* rtpAudioFilterCaps_ = nullptr;
+} // namespace
+
 void makeElement(GstElement* pipeline, const char* elementLabel, const char* element);
-GstDeviceMonitor* setupRawVideoSourceDeviceMonitor(void);
-
-struct Connection
-{
-    GstElement* pipeline_;
-    GstCaps* rtpVideoFilterCaps_;
-    GstCaps* rtpAudioFilterCaps_;
-    http::WhipClient& whipClient_;
-    std::string jitterBufferLatency_;
-
-    Connection(http::WhipClient& whipClient, std::string buffer)
-        : pipeline_(nullptr),
-          rtpVideoFilterCaps_(nullptr),
-          rtpAudioFilterCaps_(nullptr),
-          whipClient_(whipClient),
-          jitterBufferLatency_(buffer)
-    {
-        pipeline_ = gst_pipeline_new("pipeline");
-        rtpVideoFilterCaps_ = gst_caps_new_simple("application/x-rtp",
-            "media",
-            G_TYPE_STRING,
-            "video",
-            "payload",
-            G_TYPE_INT,
-            96,
-            "encoding-name",
-            G_TYPE_STRING,
-            "VP8",
-            nullptr);
-        rtpAudioFilterCaps_ = gst_caps_new_simple("application/x-rtp",
-            "media",
-            G_TYPE_STRING,
-            "audio",
-            "payload",
-            G_TYPE_INT,
-            111,
-            "encoding-name",
-            G_TYPE_STRING,
-            "OPUS",
-            nullptr);
-
-        makeElement(pipeline_, "camerasource", "autovideosrc");
-
-        makeElement(pipeline_, "vp8enc", "vp8enc");
-        makeElement(pipeline_, "videoconvert", "videoconvert");
-        makeElement(pipeline_, "rtpvp8pay", "rtpvp8pay");
-        makeElement(pipeline_, "rtp_video_payload_queue", "queue");
-
-        makeElement(pipeline_, "audiotestsrc", "audiotestsrc");
-
-        makeElement(pipeline_, "audioconvert", "audioconvert");
-        makeElement(pipeline_, "audioresample", "audioresample");
-        makeElement(pipeline_, "opusenc", "opusenc");
-        makeElement(pipeline_, "rtpopuspay", "rtpopuspay");
-        makeElement(pipeline_, "rtp_audio_payload_queue", "queue");
-
-        makeElement(pipeline_, "webrtcbin", "webrtcbin");
-        g_object_set(elements_["webrtcbin"],
-            "name",
-            "send",
-            "stun-server",
-            "stun://stun.l.google.com:19302",
-            "latency",
-            jitterBufferLatency_.c_str(),
-            nullptr);
-        gst_element_sync_state_with_parent(elements_["webrtcbin"]);
-        g_signal_connect(elements_["webrtcbin"],
-            "on-negotiation-needed",
-            G_CALLBACK(onNegotiationNeededCallback),
-            this);
-
-        if (!gst_element_link_filtered(elements_["rtp_video_payload_queue"],
-                elements_["webrtcbin"],
-                rtpVideoFilterCaps_))
-        {
-            printf("rtp_video_payload_queue-webrtcbin could not be linked\n");
-            return;
-        }
-
-        if (!gst_element_link_many(elements_["camerasource"],
-                elements_["videoconvert"],
-                elements_["vp8enc"],
-                elements_["rtpvp8pay"],
-                nullptr))
-        {
-            printf("camerasource-videoconvert-vp8enc-rtpvp8pay could not be linked\n");
-            return;
-        }
-
-        if (!gst_element_link_many(elements_["rtpvp8pay"], elements_["rtp_video_payload_queue"], nullptr))
-        {
-            printf("rtpvp8pay-rtp_video_payload_queue could not be linked\n");
-            return;
-        }
-
-        if (!gst_element_link_filtered(elements_["rtp_audio_payload_queue"],
-                elements_["webrtcbin"],
-                rtpAudioFilterCaps_))
-        {
-            printf("rtp_audio_payload_queue-webrtcbin could not be linked\n");
-            return;
-        }
-
-        if (!gst_element_link_many(elements_["audiotestsrc"],
-                elements_["audioconvert"],
-                elements_["audioresample"],
-                elements_["opusenc"],
-                elements_["rtpopuspay"],
-                elements_["rtp_audio_payload_queue"],
-                nullptr))
-        {
-            printf("audiotestsrc-audioconvert-audioresample-opusenc-rtpopuspay-rtp_audio_payload_queue could not be "
-                   "linked\n");
-            return;
-        }
-    }
-
-    ~Connection()
-    {
-        printf("\nDestructing resources...\n");
-        if (pipeline_)
-        {
-            g_object_unref(pipeline_);
-        }
-    }
-};
+void buildAndLinkPipelineElements(http::WhipClient& whipClient, std::string buffer);
+GstDeviceMonitor* setupRawVideoSourceDeviceMonitor();
+void onNegotiationNeededCallback(GstElement* src, http::WhipClient& whipClient);
+void onOfferCreatedCallback(GstPromise* promise, gpointer whipClient);
 
 void intSignalHandler(int32_t)
 {
@@ -200,7 +76,7 @@ int32_t main(int32_t argc, char** argv)
     }
 
     http::WhipClient whipClient(whipUrl, "");
-    Connection connection(whipClient, std::string(buffer));
+    buildAndLinkPipelineElements(whipClient, std::string(buffer));
 
     {
         struct sigaction sigactionData = {};
@@ -211,7 +87,7 @@ int32_t main(int32_t argc, char** argv)
     }
 
     printf("Start playing...\n");
-    if (gst_element_set_state(connection.pipeline_, GST_STATE_PLAYING) == GST_STATE_CHANGE_FAILURE)
+    if (gst_element_set_state(pipeline_, GST_STATE_PLAYING) == GST_STATE_CHANGE_FAILURE)
     {
         printf("Unable to set the pipeline to the playing state\n");
         return 1;
@@ -222,7 +98,12 @@ int32_t main(int32_t argc, char** argv)
     g_main_loop_run(mainLoop);
 
     g_main_loop_unref(mainLoop);
-    gst_element_set_state(connection.pipeline_, GST_STATE_NULL);
+    gst_element_set_state(pipeline_, GST_STATE_NULL);
+    if (pipeline_)
+    {
+        printf("\nUnref pipeline...\n");
+        g_object_unref(pipeline_);
+    }
     gst_deinit();
     return 0;
 }
@@ -244,7 +125,36 @@ void makeElement(GstElement* pipeline, const char* elementLabel, const char* ele
     }
 }
 
-void onNegotiationNeededCallback(GstElement* src, Connection* connection)
+GstDeviceMonitor* setupRawVideoSourceDeviceMonitor()
+{
+    GstDeviceMonitor* monitor;
+    GstCaps* caps;
+
+    monitor = gst_device_monitor_new();
+
+    caps = gst_caps_new_empty_simple("video/x-raw");
+    gst_device_monitor_add_filter(monitor, "Video/Source", caps);
+    gst_caps_unref(caps);
+
+    auto devices = gst_device_monitor_get_devices(monitor);
+    if (devices != nullptr)
+    {
+        while (devices != nullptr)
+        {
+            auto device = reinterpret_cast<GstDevice*>(devices->data);
+            printf("%s\n", gst_device_get_display_name(device));
+
+            gst_object_unref(device);
+            devices = g_list_delete_link(devices, devices);
+        }
+    }
+
+    gst_device_monitor_start(monitor);
+
+    return monitor;
+}
+
+void onNegotiationNeededCallback(GstElement* src, http::WhipClient& whipClient)
 {
     printf("onNegotiationNeededCallback\n");
 
@@ -262,23 +172,23 @@ void onNegotiationNeededCallback(GstElement* src, Connection* connection)
         g_object_set(transceiver, "do-nack", TRUE, nullptr);
     }
 
-    auto promise = gst_promise_new_with_change_func(onOfferCreatedCallback, connection, nullptr);
+    auto promise = gst_promise_new_with_change_func(onOfferCreatedCallback, &whipClient, nullptr);
     g_signal_emit_by_name(elements_["webrtcbin"], "create-offer", nullptr, promise);
 }
 
-void onOfferCreatedCallback(GstPromise* promise, gpointer connection)
+void onOfferCreatedCallback(GstPromise* promise, gpointer whipClientAddress)
 {
     printf("onOfferCallback\n");
 
     GstWebRTCSessionDescription* offerDesc;
-    auto data = reinterpret_cast<Connection*>(connection);
+    auto whipClient = reinterpret_cast<http::WhipClient*>(whipClientAddress);
     const auto reply = gst_promise_get_reply(promise);
     gst_structure_get(reply, "offer", GST_TYPE_WEBRTC_SESSION_DESCRIPTION, &offerDesc, nullptr);
     gst_promise_unref(promise);
 
     const auto offerString = std::string(gst_sdp_message_as_text(offerDesc->sdp));
 
-    auto sendOfferReply = data->whipClient_.sendOffer(offerString);
+    auto sendOfferReply = whipClient->sendOffer(offerString);
     if (sendOfferReply.resource_.empty())
     {
         printf("whipClient sendOffer failed\n");
@@ -312,31 +222,100 @@ void onOfferCreatedCallback(GstPromise* promise, gpointer connection)
     g_signal_emit_by_name(elements_["webrtcbin"], "set-remote-description", answer, nullptr);
 }
 
-GstDeviceMonitor* setupRawVideoSourceDeviceMonitor()
+void buildAndLinkPipelineElements(http::WhipClient& whipClient, std::string buffer)
 {
-    GstDeviceMonitor* monitor;
-    GstCaps* caps;
+    pipeline_ = gst_pipeline_new("pipeline");
+    rtpVideoFilterCaps_ = gst_caps_new_simple("application/x-rtp",
+        "media",
+        G_TYPE_STRING,
+        "video",
+        "payload",
+        G_TYPE_INT,
+        96,
+        "encoding-name",
+        G_TYPE_STRING,
+        "VP8",
+        nullptr);
+    rtpAudioFilterCaps_ = gst_caps_new_simple("application/x-rtp",
+        "media",
+        G_TYPE_STRING,
+        "audio",
+        "payload",
+        G_TYPE_INT,
+        111,
+        "encoding-name",
+        G_TYPE_STRING,
+        "OPUS",
+        nullptr);
 
-    monitor = gst_device_monitor_new();
+    makeElement(pipeline_, "camerasource", "autovideosrc");
 
-    caps = gst_caps_new_empty_simple("video/x-raw");
-    gst_device_monitor_add_filter(monitor, "Video/Source", caps);
-    gst_caps_unref(caps);
+    makeElement(pipeline_, "vp8enc", "vp8enc");
+    makeElement(pipeline_, "videoconvert", "videoconvert");
+    makeElement(pipeline_, "rtpvp8pay", "rtpvp8pay");
+    makeElement(pipeline_, "rtp_video_payload_queue", "queue");
 
-    auto devices = gst_device_monitor_get_devices(monitor);
-    if (devices != nullptr)
+    makeElement(pipeline_, "audiotestsrc", "audiotestsrc");
+
+    makeElement(pipeline_, "audioconvert", "audioconvert");
+    makeElement(pipeline_, "audioresample", "audioresample");
+    makeElement(pipeline_, "opusenc", "opusenc");
+    makeElement(pipeline_, "rtpopuspay", "rtpopuspay");
+    makeElement(pipeline_, "rtp_audio_payload_queue", "queue");
+
+    makeElement(pipeline_, "webrtcbin", "webrtcbin");
+    g_object_set(elements_["webrtcbin"],
+        "name",
+        "send",
+        "stun-server",
+        "stun://stun.l.google.com:19302",
+        "latency",
+        jitterBufferLatency_.c_str(),
+        nullptr);
+    gst_element_sync_state_with_parent(elements_["webrtcbin"]);
+    g_signal_connect(elements_["webrtcbin"],
+        "on-negotiation-needed",
+        G_CALLBACK(onNegotiationNeededCallback),
+        &whipClient);
+
+    if (!gst_element_link_filtered(elements_["rtp_video_payload_queue"], elements_["webrtcbin"], rtpVideoFilterCaps_))
     {
-        while (devices != nullptr)
-        {
-            auto device = reinterpret_cast<GstDevice*>(devices->data);
-            printf("%s\n", gst_device_get_display_name(device));
-
-            gst_object_unref(device);
-            devices = g_list_delete_link(devices, devices);
-        }
+        printf("rtp_video_payload_queue-webrtcbin could not be linked\n");
+        return;
     }
 
-    gst_device_monitor_start(monitor);
+    if (!gst_element_link_many(elements_["camerasource"],
+            elements_["videoconvert"],
+            elements_["vp8enc"],
+            elements_["rtpvp8pay"],
+            nullptr))
+    {
+        printf("camerasource-videoconvert-vp8enc-rtpvp8pay could not be linked\n");
+        return;
+    }
 
-    return monitor;
+    if (!gst_element_link_many(elements_["rtpvp8pay"], elements_["rtp_video_payload_queue"], nullptr))
+    {
+        printf("rtpvp8pay-rtp_video_payload_queue could not be linked\n");
+        return;
+    }
+
+    if (!gst_element_link_filtered(elements_["rtp_audio_payload_queue"], elements_["webrtcbin"], rtpAudioFilterCaps_))
+    {
+        printf("rtp_audio_payload_queue-webrtcbin could not be linked\n");
+        return;
+    }
+
+    if (!gst_element_link_many(elements_["audiotestsrc"],
+            elements_["audioconvert"],
+            elements_["audioresample"],
+            elements_["opusenc"],
+            elements_["rtpopuspay"],
+            elements_["rtp_audio_payload_queue"],
+            nullptr))
+    {
+        printf("audiotestsrc-audioconvert-audioresample-opusenc-rtpopuspay-rtp_audio_payload_queue could not be "
+               "linked\n");
+        return;
+    }
 }
