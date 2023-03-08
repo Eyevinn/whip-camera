@@ -19,7 +19,6 @@ std::map<std::string, GstElement*> elements_;
 
 std::string whipResource_;
 std::string etag_;
-std::string jitterBufferLatency_;
 
 GstElement* pipeline_ = nullptr;
 
@@ -270,7 +269,7 @@ void buildAndLinkPipelineElements(http::WhipClient& whipClient, std::string buff
         "stun-server",
         "stun://stun.l.google.com:19302",
         "latency",
-        jitterBufferLatency_.c_str(),
+        buffer.c_str(),
         nullptr);
     gst_element_sync_state_with_parent(elements_["webrtcbin"]);
     g_signal_connect(elements_["webrtcbin"],
