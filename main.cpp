@@ -3,21 +3,13 @@
 #include "http/WhipClient.h"
 #include "nlohmann/json.hpp"
 #include <csignal>
-#include <cstdint>
 #include <getopt.h>
 #include <glib.h>
 #include <gst/gst.h>
 #include <gst/sdp/sdp.h>
 #include <gst/webrtc/webrtc.h>
 #include <map>
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
-
-namespace http
-{
-class WhipClient;
-}
 
 namespace
 {
@@ -33,12 +25,11 @@ GstElement* pipeline_ = nullptr;
 
 GstCaps* rtpVideoFilterCaps_ = nullptr;
 GstCaps* rtpAudioFilterCaps_ = nullptr;
-
 } // namespace
 
 void makeElement(GstElement* pipeline, const char* elementLabel, const char* element);
 void buildAndLinkPipelineElements(http::WhipClient& whipClient, std::string buffer);
-GstDeviceMonitor* setupRawVideoSourceDeviceMonitor(void);
+GstDeviceMonitor* setupRawVideoSourceDeviceMonitor();
 void onNegotiationNeededCallback(GstElement* src, http::WhipClient& whipClient);
 void onOfferCreatedCallback(GstPromise* promise, gpointer whipClient);
 
