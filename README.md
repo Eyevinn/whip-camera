@@ -4,9 +4,11 @@
 # Ingest camera to WebRTC-HTTP ingestion protocol
 Web camera ingestion client for WHIP (https://github.com/Eyevinn/whip). Ingests a web camera stream and sends it to a WHIP endpoint.
 
+The program will choose an appropriate video source to use. It currently does not support choosing between several appropriate sources.
+
 ## Build from source
 
-### OSX
+### Mac OS
 
 Requirements:
 - XCode command line tools installed
@@ -14,6 +16,20 @@ Requirements:
 
 ```
 brew install gstreamer gst-plugins-bad gst-plugins-good libsoup@2 icu4c cmake gst-libav
+```
+
+```
+cmake -DCMAKE_BUILD_TYPE=Release -G "Unix Makefiles" .
+make
+```
+
+### Ubuntu 22.04
+
+Requirements:
+- Install dependencies
+
+```
+apt-get install libgstreamer1.0-0 gstreamer1.0-plugins-bad gstreamer1.0-plugins-good gstreamer1.0-libav gstreamer1.0-plugins-rtp gstreamer1.0-nice libsoup2.4-1 cmake gcc g++ make gdb libglib2.0-dev libgstreamer1.0-dev libgstreamer-plugins-bad1.0-dev libsoup2.4-dev
 ```
 
 ```
