@@ -4,7 +4,6 @@
 <div align="center">
 Web camera ingestion client for WHIP (https://github.com/Eyevinn/whip).
   <br/>
-  <br/>
 </div>
 
 <div align="center">
