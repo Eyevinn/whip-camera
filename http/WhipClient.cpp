@@ -12,17 +12,14 @@ void iterateResponseHeaders(const char* name, const char* value, gpointer userDa
     headers->emplace(name, value);
 }
 
-}// namespace
+} // namespace
 
 namespace http
 {
 
 struct WhipClient::OpaqueSoupData
 {
-    OpaqueSoupData()
-        : soupSession_(nullptr)
-    {
-    }
+    OpaqueSoupData() : soupSession_(nullptr) {}
 
     SoupSession* soupSession_;
 };
@@ -33,7 +30,7 @@ WhipClient::WhipClient(const std::string& url, const std::string& authKey)
       authKey_(authKey)
 {
     data_->soupSession_ =
-            soup_session_new_with_options(SOUP_SESSION_TIMEOUT, 5, SOUP_SESSION_SSL_STRICT, FALSE, nullptr);
+        soup_session_new_with_options(SOUP_SESSION_TIMEOUT, 5, SOUP_SESSION_SSL_STRICT, FALSE, nullptr);
     if (!data_->soupSession_)
     {
         assert(false);
@@ -51,6 +48,7 @@ WhipClient::~WhipClient()
 
 WhipClient::SendOfferResult WhipClient::sendOffer(const std::string& sdp)
 {
+
     auto soupMessage = soup_message_new("POST", url_.c_str());
     if (!soupMessage)
     {
@@ -71,10 +69,15 @@ WhipClient::SendOfferResult WhipClient::sendOffer(const std::string& sdp)
 
     std::unordered_map<std::string, std::string> headers;
     soup_message_headers_foreach(soupMessage->response_headers, iterateResponseHeaders, &headers);
-    const auto locationItr = headers.find("location");
+
+    auto locationItr = headers.find("location");
     if (locationItr == headers.cend())
     {
-        return {};
+        locationItr = headers.find("Location");
+        if (locationItr == headers.cend())
+        {
+            return {};
+        }
     }
 
     SendOfferResult result;
@@ -116,4 +119,4 @@ bool WhipClient::updateIce(const std::string& resourceUrl, const std::string& et
     return true;
 }
 
-}// namespace http
+} // namespace http

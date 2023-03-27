@@ -268,6 +268,8 @@ void buildAndLinkPipelineElements(http::WhipClient& whipClient, std::string buff
         "send",
         "stun-server",
         "stun://stun.l.google.com:19302",
+        "bundle-policy",
+        GST_WEBRTC_BUNDLE_POLICY_MAX_BUNDLE,
         "latency",
         buffer.c_str(),
         nullptr);
