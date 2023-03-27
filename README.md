@@ -2,12 +2,26 @@
   Eyevinn Whip-Camera
 </h1>
 <div align="center">
-Web camera ingestion client for WHIP (https://github.com/Eyevinn/whip). Ingests a web camera stream and sends it to a WHIP endpoint.
-
-The program will choose an appropriate video source to use. It currently does not support choosing between several appropriate sources.
+Web camera ingestion client for WHIP (https://github.com/Eyevinn/whip).
   <br/>
   <br/>
 </div>
+
+<div align="center">
+  <br/>
+
+  [![npm](https://img.shields.io/npm/v/eyevinn-channel-engine?style=flat-square)](https://www.npmjs.com/package/eyevinn-channel-engine)
+  [![github release](https://img.shields.io/github/v/release/Eyevinn/channel-engine?style=flat-square)](https://github.com/Eyevinn/channel-engine/releases)
+  [![license](https://img.shields.io/github/license/eyevinn/channel-engine.svg?style=flat-square)](LICENSE)
+  [![PRs welcome](https://img.shields.io/badge/PRs-welcome-ff69b4.svg?style=flat-square)](https://github.com/eyevinn/channel-engine/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22)
+  [![made with hearth by Eyevinn](https://img.shields.io/badge/made%20with%20%E2%99%A5%20by-Eyevinn-59cbe8.svg?style=flat-square)](https://github.com/eyevinn)
+  [![Slack](http://slack.streamingtech.se/badge.svg)](http://slack.streamingtech.se)
+
+</div>
+
+Ingests a web camera stream and sends it to a WHIP endpoint.
+
+The program will choose an appropriate video source to use. It currently does not support choosing between several appropriate sources.
 
 ## Build from source
 
