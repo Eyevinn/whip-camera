@@ -1,5 +1,5 @@
 <h1 align="center">
-  Eyevinn Whip-Camera
+  Eyevinn WHIP Camera
 </h1>
 <div align="center">
 Web camera ingestion client for WHIP (https://github.com/Eyevinn/whip).
