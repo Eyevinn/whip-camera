@@ -2,7 +2,7 @@
   Eyevinn WHIP Camera
 </h1>
 <div align="center">
-Web camera ingestion client for WHIP(https://www.ietf.org/archive/id/draft-ietf-wish-whip-01.html)
+Web camera ingestion client for <a href="https://www.ietf.org/archive/id/draft-ietf-wish-whip-01.html">WHIP</a>
   <br/>
 </div>
 
