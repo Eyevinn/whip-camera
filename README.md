@@ -52,7 +52,29 @@ cmake -DCMAKE_BUILD_TYPE=Release -G "Unix Makefiles" .
 make
 ```
 
-## Run
+## Usage
+
+```
+Usage: GST_PLUGIN_PATH=[GST_PLUGIN_PATH] ./whip-camera [OPTION]
+  -b, buffer INT
+  -u, whipUrl STRING
+  -l
+
+Options:
+  -b set duration to buffer in the jitterbuffers (in ms)
+  -u url address for WHIP endpoint
+  -l list video source devices with video/x-raw capabilities
+```
+
+Example - run program
+```
+GST_PLUGIN_PATH=/usr/local/lib/gstreamer-1.0 ./whip-camera -b 50 -u "http://myWhipURL" 
+```
+
+Example - list sources
+```
+GST_PLUGIN_PATH=/usr/local/lib/gstreamer-1.0 ./whip-camera -l 
+```
 
 To run you need to set the `GST_PLUGIN_PATH` environment variable to where you have the gstreamer plugins installed, e.g:
 
@@ -64,26 +86,6 @@ Some OS(like newer macs) have the following path:
 
 ```
 export GST_PLUGIN_PATH=/opt/homebrew/lib/gstreamer-1.0
-```
-
-Then run the command.
-```
-./whip-camera
-```
-
-Options:
-- -b set duration to buffer in the jitterbuffers (in ms)
-- -u url address for WHIP endpoint
-- -l list video source devices with video/x-raw capabilities
-
-run example
-```
-GST_PLUGIN_PATH=/usr/local/lib/gstreamer-1.0 ./whip-camera -b 50 -u "http://myWhipURL" 
-```
-
-list video sources example
-```
-GST_PLUGIN_PATH=/usr/local/lib/gstreamer-1.0 ./whip-camera -l 
 ```
 
 ## Support
