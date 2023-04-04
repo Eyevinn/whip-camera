@@ -71,7 +71,7 @@ Then run the command.
 ./whip-camera
 ```
 
-Flags:
+Options:
 - -b set duration to buffer in the jitterbuffers (in ms)
 - -u url address for WHIP endpoint
 - -l list video source devices with video/x-raw capabilities

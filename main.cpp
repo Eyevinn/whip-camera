@@ -22,10 +22,10 @@ const char* usageString = "Usage: GST_PLUGIN_PATH=[GST_PLUGIN_PATH] ./whip-camer
                           "  -u, whipUrl STRING\n"
                           "  -l\n"
                           "\n"
-                          "Flags:\n"
+                          "Options:\n"
                           "-b set duration to buffer in the jitterbuffers (in ms)\n"
                           "-u url address for WHIP endpoint\n"
-                          "-l list video source devices with video/x-raw capabilities";
+                          "-l list video source devices with video/x-raw capabilities\n";
 
 std::string whipResource_;
 std::string etag_;
@@ -75,7 +75,7 @@ int32_t main(int32_t argc, char** argv)
     {
         printf("%s\n", usageString);
         printf("Example: GST_PLUGIN_PATH=/usr/local/lib/gstreamer-1.0 ./whip-camera -b 50 -u "
-               "'http://localhost:8200/api/v2/whip/sfu-broadcaster?channelId=test'\n");
+               "'http://localhost:8200/api/v2/whip/sfu-broadcaster?channelId=test'\n\n");
         return 1;
     }
 
