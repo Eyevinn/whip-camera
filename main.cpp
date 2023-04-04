@@ -20,7 +20,12 @@ std::map<std::string, GstElement*> elements_;
 const char* usageString = "Usage: GST_PLUGIN_PATH=[GST_PLUGIN_PATH] ./whip-camera [OPTION]\n"
                           "  -b, buffer INT\n"
                           "  -u, whipUrl STRING\n"
-                          "  -l\n";
+                          "  -l\n"
+                          "\n"
+                          "Flags:\n"
+                          "-b set duration to buffer in the jitterbuffers (in ms)\n"
+                          "-u url address for WHIP endpoint\n"
+                          "-l list video source devices with video/x-raw capabilities";
 
 std::string whipResource_;
 std::string etag_;
