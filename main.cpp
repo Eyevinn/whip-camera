@@ -17,6 +17,11 @@ GMainLoop* mainLoop = nullptr;
 
 std::map<std::string, GstElement*> elements_;
 
+const char* usageString = "Usage: GST_PLUGIN_PATH=[GST_PLUGIN_PATH] ./whip-camera [OPTION]\n"
+                          "  -b, buffer INT\n"
+                          "  -u, whipUrl STRING\n"
+                          "  -l\n";
+
 std::string whipResource_;
 std::string etag_;
 
@@ -41,7 +46,7 @@ int32_t main(int32_t argc, char** argv)
 {
     gst_init(nullptr, nullptr);
 
-    const char* buffer = nullptr;
+    uint32_t buffer = 0;
     const char* whipUrl = nullptr;
     int32_t getOptResult;
 
@@ -49,7 +54,7 @@ int32_t main(int32_t argc, char** argv)
         switch (getOptResult)
         {
         case 'b':
-            buffer = optarg;
+            buffer = std::strtoul(optarg, nullptr, 10);
             break;
         case 'l':
             setupRawVideoSourceDeviceMonitor();
@@ -63,19 +68,14 @@ int32_t main(int32_t argc, char** argv)
 
     if (whipUrl == nullptr)
     {
-        printf("WHIP URL not set, use parameter -u to set)\n");
-        printf("Usage: GST_PLUGIN_PATH=/usr/local/lib/gstreamer-1.0 ./whip-camera -b 50 -u "
+        printf("%s\n", usageString);
+        printf("Example: GST_PLUGIN_PATH=/usr/local/lib/gstreamer-1.0 ./whip-camera -b 50 -u "
                "'http://localhost:8200/api/v2/whip/sfu-broadcaster?channelId=test'\n");
         return 1;
     }
 
-    if (buffer == nullptr)
-    {
-        buffer = "0";
-    }
-
     http::WhipClient whipClient(whipUrl, "");
-    buildAndLinkPipelineElements(whipClient, std::string(buffer));
+    buildAndLinkPipelineElements(whipClient, std::to_string(buffer));
 
     {
         struct sigaction sigactionData = {};
