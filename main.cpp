@@ -17,18 +17,20 @@ GMainLoop* mainLoop = nullptr;
 
 std::map<std::string, GstElement*> elements_;
 
-const char* usageString = "Usage: GST_PLUGIN_PATH=[GST_PLUGIN_PATH] ./whip-camera [OPTION]\n"
-                          "  -b, buffer INT\n"
-                          "  -u, whipUrl STRING\n"
-                          "  -s, sourceDevice STRING(linux) or INT(Mac OS)\n"
-                          "  -l\n"
-                          "\n"
-                          "Options:\n"
-                          "-b set duration to buffer in the jitterbuffers (in ms)\n"
-                          "-u url address for WHIP endpoint\n"
-                          "-s set the video source device. Use -l to list sources to see which devices are detected. "
-                          "Leaving this option unset uses autovideosrc to automatically identify a suitable device.\n"
-                          "-l list video source devices with video/x-raw capabilities\n";
+const char* usageString =
+    "Usage: GST_PLUGIN_PATH=[GST_PLUGIN_PATH] ./whip-camera [OPTION]\n"
+    "  -b, buffer INT\n"
+    "  -u, whipUrl STRING\n"
+    "  -s, sourceDevice STRING\n"
+    "  -l\n"
+    "\n"
+    "Options:\n"
+    "-b set duration to buffer in the jitterbuffers (in ms)\n"
+    "-u url address for WHIP endpoint\n"
+    "-s set the video source device. Use -l to list sources to see which devices are detected. "
+    "On Mac OS supply the device index eg. -s '0', on Linux supply the device path eg. -s '/dev/video0'."
+    "Leaving this option unset uses autovideosrc to automatically identify a suitable device.\n"
+    "-l list video source devices with video/x-raw capabilities\n";
 
 std::string whipResource_;
 std::string etag_;
