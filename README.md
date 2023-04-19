@@ -73,17 +73,24 @@ make
 Usage: GST_PLUGIN_PATH=[GST_PLUGIN_PATH] ./whip-camera [OPTION]
   -b, buffer INT
   -u, whipUrl STRING
+  -s, sourceDevice STRING(linux) or INT(Mac OS)
   -l
 
 Options:
   -b set duration to buffer in the jitterbuffers (in ms)
   -u url address for WHIP endpoint
+  -s set the video source device. Use -l to list sources to see which devices are detected. Leaving this option unset uses autovideosrc to automatically identify a suitable device.
   -l list video source devices with video/x-raw capabilities
 ```
 
-Example - run program
+Example Mac OS - run program
 ```
-GST_PLUGIN_PATH=/usr/local/lib/gstreamer-1.0 ./whip-camera -b 50 -u "http://myWhipURL" 
+GST_PLUGIN_PATH=/usr/local/lib/gstreamer-1.0 ./whip-camera -b 50 -u "http://myWhipURL" -s 0 
+```
+
+Example Linux - run program
+```
+GST_PLUGIN_PATH=/usr/local/lib/gstreamer-1.0 ./whip-camera -b 50 -u "http://myWhipURL" -s "/dev/video0" 
 ```
 
 Example - list sources
