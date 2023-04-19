@@ -21,6 +21,14 @@ Ingests a web camera stream and sends it to a WHIP endpoint.
 
 The program will choose an appropriate video source to use. It currently does not support choosing between several appropriate sources.
 
+## Install Binary
+
+Homebrew:
+
+```
+brew install eyevinn/tools/whip-camera
+```
+
 ## Build from source
 
 ### Mac OS
@@ -29,8 +37,14 @@ Requirements:
 - XCode command line tools installed
 - Install additional dependencies using homebrew
 
+Install dependencies:
 ```
 brew install gstreamer gst-plugins-bad gst-plugins-good libsoup@2 icu4c cmake gst-libav
+```
+
+On Apple M1 you might need to build the gst-plugins-bad from source as the SRT plugins are not available in the binary bottle.
+```
+brew reinstall --build-from-source gst-plugins-bad
 ```
 
 ```
@@ -43,6 +57,7 @@ make
 Requirements:
 - Install dependencies
 
+Install dependencies:
 ```
 apt-get install libgstreamer1.0-0 gstreamer1.0-plugins-bad gstreamer1.0-plugins-good gstreamer1.0-libav gstreamer1.0-plugins-rtp gstreamer1.0-nice libsoup2.4-1 cmake gcc g++ make gdb libglib2.0-dev libgstreamer1.0-dev libgstreamer-plugins-bad1.0-dev libsoup2.4-dev
 ```
@@ -52,7 +67,29 @@ cmake -DCMAKE_BUILD_TYPE=Release -G "Unix Makefiles" .
 make
 ```
 
-## Run
+## Usage
+
+```
+Usage: GST_PLUGIN_PATH=[GST_PLUGIN_PATH] ./whip-camera [OPTION]
+  -b, buffer INT
+  -u, whipUrl STRING
+  -l
+
+Options:
+  -b set duration to buffer in the jitterbuffers (in ms)
+  -u url address for WHIP endpoint
+  -l list video source devices with video/x-raw capabilities
+```
+
+Example - run program
+```
+GST_PLUGIN_PATH=/usr/local/lib/gstreamer-1.0 ./whip-camera -b 50 -u "http://myWhipURL" 
+```
+
+Example - list sources
+```
+GST_PLUGIN_PATH=/usr/local/lib/gstreamer-1.0 ./whip-camera -l 
+```
 
 To run you need to set the `GST_PLUGIN_PATH` environment variable to where you have the gstreamer plugins installed, e.g:
 
@@ -64,26 +101,6 @@ Some OS(like newer macs) have the following path:
 
 ```
 export GST_PLUGIN_PATH=/opt/homebrew/lib/gstreamer-1.0
-```
-
-Then run the command.
-```
-./whip-camera
-```
-
-Flags:
-- -b set duration to buffer in the jitterbuffers (in ms)
-- -u url address for WHIP endpoint
-- -l list video source devices with video/x-raw capabilities
-
-run example
-```
-GST_PLUGIN_PATH=/usr/local/lib/gstreamer-1.0 ./whip-camera -b 50 -u "http://myWhipURL" 
-```
-
-list video sources example
-```
-GST_PLUGIN_PATH=/usr/local/lib/gstreamer-1.0 ./whip-camera -l 
 ```
 
 ## Support

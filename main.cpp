@@ -20,10 +20,17 @@ std::map<std::string, GstElement*> elements_;
 const char* usageString = "Usage: GST_PLUGIN_PATH=[GST_PLUGIN_PATH] ./whip-camera [OPTION]\n"
                           "  -b, buffer INT\n"
                           "  -u, whipUrl STRING\n"
-                          "  -l\n";
+                          "  -l\n"
+                          "\n"
+                          "Options:\n"
+                          "-b set duration to buffer in the jitterbuffers (in ms)\n"
+                          "-u url address for WHIP endpoint\n"
+                          "-l list video source devices with video/x-raw capabilities\n";
 
 std::string whipResource_;
 std::string etag_;
+std::string sourceDevice_;
+std::string sourceElement_;
 
 GstElement* pipeline_ = nullptr;
 
@@ -50,7 +57,7 @@ int32_t main(int32_t argc, char** argv)
     const char* whipUrl = nullptr;
     int32_t getOptResult;
 
-    while ((getOptResult = getopt(argc, argv, ":b:lu:")) != -1)
+    while ((getOptResult = getopt(argc, argv, "b:lu:s:")) != -1)
         switch (getOptResult)
         {
         case 'b':
@@ -62,6 +69,9 @@ int32_t main(int32_t argc, char** argv)
         case 'u':
             whipUrl = optarg;
             break;
+        case 's':
+            sourceDevice_ = optarg;
+            break;
         default:
             break;
         }
@@ -70,7 +80,7 @@ int32_t main(int32_t argc, char** argv)
     {
         printf("%s\n", usageString);
         printf("Example: GST_PLUGIN_PATH=/usr/local/lib/gstreamer-1.0 ./whip-camera -b 50 -u "
-               "'http://localhost:8200/api/v2/whip/sfu-broadcaster?channelId=test'\n");
+               "'http://localhost:8200/api/v2/whip/sfu-broadcaster?channelId=test'\n\n");
         return 1;
     }
 
@@ -138,13 +148,23 @@ GstDeviceMonitor* setupRawVideoSourceDeviceMonitor()
     auto devices = gst_device_monitor_get_devices(monitor);
     if (devices != nullptr)
     {
+        auto i = 0;
         while (devices != nullptr)
         {
             auto device = reinterpret_cast<GstDevice*>(devices->data);
+            printf("%d: ", i);
             printf("%s\n", gst_device_get_display_name(device));
+            auto deviceProps = gst_device_get_properties(device);
+            auto path = gst_structure_get_string(deviceProps, "object.path");
+            if (path)
+            {
+                printf("%s\n", path);
+            }
 
             gst_object_unref(device);
+            gst_structure_free(deviceProps);
             devices = g_list_delete_link(devices, devices);
+            i++;
         }
     }
 
@@ -247,10 +267,25 @@ void buildAndLinkPipelineElements(http::WhipClient& whipClient, std::string buff
         "OPUS",
         nullptr);
 
-    makeElement(pipeline_, "camerasource", "autovideosrc");
+    if (!sourceDevice_.empty())
+    {
+#if __APPLE__
+        sourceElement_ = "avfvideosrc";
+        makeElement(pipeline_, "camerasource", sourceElement_.c_str());
+        g_object_set(elements_["camerasource"], "device-index", std::stoi(sourceDevice_), nullptr);
+#elif __linux__
+        sourceElement_ = "v4l2src";
+        makeElement(pipeline_, "camerasource", sourceElement_.c_str());
+        g_object_set(elements_["camerasource"], "device", sourceDevice_.c_str(), nullptr);
+#endif
+    }
+    else
+    {
+        makeElement(pipeline_, "camerasource", "autovideosrc");
+    }
 
-    makeElement(pipeline_, "vp8enc", "vp8enc");
     makeElement(pipeline_, "videoconvert", "videoconvert");
+    makeElement(pipeline_, "vp8enc", "vp8enc");
     makeElement(pipeline_, "rtpvp8pay", "rtpvp8pay");
     makeElement(pipeline_, "rtp_video_payload_queue", "queue");
 
