@@ -19,7 +19,7 @@ Web camera ingestion client for <a href="https://www.ietf.org/archive/id/draft-i
 
 Ingests a web camera stream and sends it to a WHIP endpoint.
 
-The program will choose an appropriate video source to use. It currently does not support choosing between several appropriate sources.
+If video source device is not set the program will choose an appropriate video source device to use.
 
 ## Install Binary
 
